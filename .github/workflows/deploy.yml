@@ -1,14 +1,15 @@
-﻿name: Deploy gym planner to GitHub Pages
+name: Deploy gym planner to GitHub Pages
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
-  group: pages
+  group: github-pages
   cancel-in-progress: true
 jobs:
   build:
@@ -16,15 +17,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Set up Node
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Configure Vite base path for repository
-        run: node -e "const fs=require('fs');const n=(process.env.GITHUB_REPOSITORY||'owner/repo').split('/')[1];const base=n.endsWith('.github.io')?'/':'/'+n+'/';fs.writeFileSync('vite.config.js','export default { base: '+JSON.stringify(base)+' }\\n')"
+      - name: Configure Pages base path
+        shell: bash
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          if [[ "$REPO_NAME" == *.github.io ]]; then
+            BASE_PATH="/"
+          else
+            BASE_PATH="/$REPO_NAME/"
+          fi
+          printf "export default { base: '%s' }\\n" "$BASE_PATH" > vite.config.js
       - name: Build site
         run: npm run build
       - name: Upload Pages artifact
